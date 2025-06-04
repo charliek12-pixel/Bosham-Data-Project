@@ -2,8 +2,6 @@ name: Update Public Data
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '0 6 * * *'  # Daily at 6am UTC
 
 jobs:
   update-data:
@@ -26,22 +24,16 @@ jobs:
 
       - name: Commit and push changes
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          TOKEN: ${{ secrets.PUSH_TOKEN }}
         run: |
           git config --global user.name "GitHub Actions Bot"
           git config --global user.email "bot@example.com"
-          git config --global credential.helper ''
-          git remote set-url origin https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}
-
-          # Make sure the folder exists
+          git config --global credential.helper ""
           mkdir -p data/processed
-
-          # Write a test file
-          echo "Test" >> data/processed/test.txt
-
-          # Commit and push
-          git add data/processed/test.txt || echo "Nothing to add"
+          echo "Test" > data/processed/test.txt
+          git add data/processed/test.txt
           git commit -m "Test commit from workflow" || echo "Nothing to commit"
+          git remote set-url origin https://x-access-token:${TOKEN}@github.com/${{ github.repository }}
           git push origin HEAD
 
 
