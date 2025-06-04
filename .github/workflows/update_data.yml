@@ -1,8 +1,6 @@
 name: Update Public Data
 
 on:
-  schedule:
-    - cron: '0 6 * * *'
   workflow_dispatch:
 
 jobs:
@@ -10,32 +8,32 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repo
-      uses: actions/checkout@v3
+      - name: Checkout repo
+        uses: actions/checkout@v3
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: 3.11
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
 
-    - name: Install dependencies
-      run: pip install pandas
+      - name: Make sure token is available
+        run: |
+          echo "GH_TOKEN starts with: ${GH_TOKEN:0:4}" || echo "GH_TOKEN not found"
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
-    - name: Run data fetch script
-      run: python scripts/fetch_data.py
-
-    - name: Commit and push changes
-      env:
-        GH_TOKEN: ${{ secrets.GH_TOKEN }}
-      run: |
-        git config --global user.name "GitHub Actions Bot"
-        git config --global user.email "bot@example.com"
-        git config --global credential.helper ''
-        git remote set-url origin https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}
-        git add data/processed/population.csv || echo "Nothing to add"
-        git commit -m "Update data from fetch_data.py" || echo "Nothing to commit"
-        git push origin HEAD
-
+      - name: Commit and push changes
+        run: |
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "bot@example.com"
+          git config --global credential.helper ''
+          git remote set-url origin https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}
+          echo "Test" >> data/processed/test.txt
+          git add data/processed/test.txt || echo "Nothing to add"
+          git commit -m "Test commit from workflow" || echo "Nothing to commit"
+          git push origin HEAD
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
 
 
