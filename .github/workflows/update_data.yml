@@ -15,7 +15,6 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
-          
 
       - name: Install dependencies
         run: pip install pandas
@@ -24,22 +23,22 @@ jobs:
         run: python scripts/fetch_data.py
 
       - name: Commit and push changes
-      env:
-    TOKEN: ${{ secrets.PUSH_TOKEN }}
-    REPO: ${{ github.repository }}
-    run: 
-    git config --global user.name "GitHub Actions Bot"
-    git config --global user.email "bot@example.com"
-    git config --global credential.helper ""
-    
-    mkdir -p data/processed
-    echo "Test" > data/processed/test.txt
-    
-    git add data/processed/test.txt
-    git commit -m "Test commit from workflow" || echo "Nothing to commit"
-    
-    git remote set-url origin https://x-access-token:${TOKEN}@github.com/${REPO}
-    git push origin HEAD
+        env:
+          TOKEN: ${{ secrets.PUSH_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "bot@example.com"
+          git config --global credential.helper ""
+
+          mkdir -p data/processed
+          echo "Test" > data/processed/test.txt
+
+          git add data/processed/test.txt
+          git commit -m "Test commit from workflow" || echo "Nothing to commit"
+
+          git remote set-url origin https://x-access-token:${TOKEN}@github.com/${REPO}
+          git push origin HEAD
 
 
 
