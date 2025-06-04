@@ -32,6 +32,7 @@ jobs:
       run: |
         git config --global user.name "GitHub Actions Bot"
         git config --global user.email "bot@example.com"
+        git config --global credential.helper ''
         git remote set-url origin https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}
         git add data/processed/population.csv || echo "Nothing to add"
         git commit -m "Update data from fetch_data.py" || echo "Nothing to commit"
