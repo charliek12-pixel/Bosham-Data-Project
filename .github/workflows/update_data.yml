@@ -35,3 +35,4 @@ jobs:
         git commit -m "Update data from fetch_data.py" || echo "No changes to commit"
         git push
 
+
