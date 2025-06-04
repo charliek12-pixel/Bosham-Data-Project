@@ -1,0 +1,33 @@
+name: Update Public Data
+
+on:
+  schedule:
+    - cron: '0 6 * * *'  # ⏰ run every day at 6am UTC
+  workflow_dispatch:      # 🖱️ also let me run it manually
+
+jobs:
+  build:
+    runs-on: ubuntu-latest   # 💻 use a virtual computer
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v3   # 📥 pull down the code from GitHub
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'   # 🐍 install Python
+
+    - name: Install dependencies
+      run: pip install pandas    # 📦 install pandas so the script works
+
+    - name: Run data fetch script
+      run: python scripts/fetch_data.py  # ▶️ run your script!
+
+    - name: Commit and push changes
+      run: |
+        git config user.name "github-actions"
+        git config user.email "actions@github.com"
+        git add data/processed/population.csv
+        git commit -m "Update data from fetch_data.py"
+        git push
