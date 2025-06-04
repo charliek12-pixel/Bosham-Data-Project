@@ -25,14 +25,13 @@ jobs:
       run: python scripts/fetch_data.py
 
     - name: Commit and push changes
-      env:
-        GH_TOKEN: ${{ secrets.GH_TOKEN }}
       run: |
         git config --global user.name "GitHub Actions Bot"
         git config --global user.email "bot@example.com"
-        git remote set-url origin https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}
-        git add data/processed/population.csv
+        git remote set-url origin https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/${{ github.repository }}
+        git add data/processed/population.csv || exit 0
         git commit -m "Update data from fetch_data.py" || echo "No changes to commit"
-        git push
+        git push origin HEAD
+
 
 
