@@ -22,18 +22,22 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
-      - name: Commit and push changes
-        run: |
-          git config --global user.name "GitHub Actions Bot"
-          git config --global user.email "bot@example.com"
-          git config --global credential.helper ''
-          git remote set-url origin https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}
-          echo "Test" >> data/processed/test.txt
-          git add data/processed/test.txt || echo "Nothing to add"
-          git commit -m "Test commit from workflow" || echo "Nothing to commit"
-          git push origin HEAD
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+     - name: Commit and push changes
+  env:
+    GH_TOKEN: ${{ secrets.GH_TOKEN }}
+  run: |
+    git config --global user.name "GitHub Actions Bot"
+    git config --global user.email "bot@example.com"
+    git config --global credential.helper ''
+    git remote set-url origin https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}
+    
+    mkdir -p data/processed
+    echo "Test" >> data/processed/test.txt
+
+    git add data/processed/test.txt || echo "Nothing to add"
+    git commit -m "Test commit from workflow" || echo "Nothing to commit"
+    git push origin HEAD
+
 
 
 
