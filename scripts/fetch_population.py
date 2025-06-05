@@ -14,7 +14,7 @@ def fetch_and_clean_population():
         f.write(r.content)
 
     # ONS data usually starts from row 4 or 5
-    df = pd.read_excel(file_path, sheet_name="MYE2 - Persons", skiprows=4)
+    df = pd.read_excel(file_path, sheet_name="MYE2 - Persons", skiprows=4, engine="openpyxl")
     df = df[df["Name"].str.contains("Chichester", na=False)]
     df = df.melt(id_vars=["Code", "Name"], var_name="Year", value_name="Population")
     df = df[["Year", "Population", "Name"]]
