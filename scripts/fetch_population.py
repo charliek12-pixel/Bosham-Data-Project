@@ -34,7 +34,7 @@ def fetch_population_chichester():
         "OBS_VALUE": "Population"
     })
 
-    df = df[["Year", "Location", "Gender", "Age Group", "Measure Type", "Value"]]
+    df = df[["Year", "Location", "Gender", "Age Group", "Measure Type", "Population"]]
 
     # Split into counts and percentages
     counts_df = df[df["Measure Type"] == "Value"].copy()
