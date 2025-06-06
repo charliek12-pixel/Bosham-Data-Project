@@ -1,14 +1,16 @@
 name: Fetch Population Data
 
 on:
-  workflow_dispatch:  # Allows you to run it manually from GitHub
+  workflow_dispatch:  # Manual trigger from GitHub Actions tab
+  schedule:
+    - cron: '0 8 * * 1'  # OPTIONAL: runs every Monday at 8am UTC
 
 jobs:
   fetch-and-commit:
     runs-on: ubuntu-latest
 
     steps:
-      - name: ⬇️ Checkout repo
+      - name: ⬇️ Checkout repository
         uses: actions/checkout@v3
 
       - name: 🐍 Set up Python
@@ -16,7 +18,7 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: 📦 Install dependencies
+      - name: 📦 Install Python dependencies
         run: pip install pandas requests
 
       - name: 📊 Run population fetch script
@@ -26,8 +28,8 @@ jobs:
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git add data/processed/population_chichester*.csv
-      
+          git add data/processed/population_chichester_summary.csv
+
           if git diff --cached --quiet; then
             echo "🟡 No data changes to commit."
           else
@@ -35,4 +37,5 @@ jobs:
             git push
             echo "✅ Data committed and pushed."
           fi
+
 
