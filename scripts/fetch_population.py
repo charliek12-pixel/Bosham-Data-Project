@@ -28,6 +28,7 @@ def fetch_population_chichester():
     df = df.rename(columns={
         "DATE_NAME": "Year",
         "GEOGRAPHY_NAME": "Location",
+        "GENDER_NAME": "Gender",
         "C_AGE_NAME": "Age Group",
         "MEASURES_NAME": "Measure Type",
         "OBS_VALUE": "Population"
