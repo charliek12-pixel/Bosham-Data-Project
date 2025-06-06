@@ -31,7 +31,7 @@ def fetch_population_chichester():
         "GENDER_NAME": "Gender",
         "C_AGE_NAME": "Age Group",
         "MEASURES_NAME": "Measure Type",
-        "OBS_VALUE": "Value"
+        "OBS_VALUE": "Population"
     })
 
     df = df[["Year", "Location", "Gender", "Age Group", "Measure Type", "Value"]]
