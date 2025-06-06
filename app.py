@@ -2,67 +2,41 @@ import streamlit as st
 import pandas as pd
 import os
 
-# Load data
+# Load processed data
 @st.cache_data
 def load_data():
-    filepath = "data/processed/population_chichester_counts.csv"
-    if not os.path.exists(filepath):
-        st.error("Population data not found. Please run the data fetch script.")
+    path = "data/processed/population_chichester_summary.csv"
+    if not os.path.exists(path):
+        st.error("❌ Data not found. Please fetch the latest population data first.")
         return pd.DataFrame()
-    import streamlit as st
-import pandas as pd
-import os
-
-# Load data
-@st.cache_data
-def load_data():
-    filepath = "data/processed/population_chichester_counts.csv"
-    if not os.path.exists(filepath):
-        st.error("Population data not found. Please run the data fetch script.")
-        return pd.DataFrame()
-    df = pd.read_csv(filepath)
-    df = df.rename(columns={"Value": "Population"})
-    return df
-df = load_data()
-
-st.title("📊 Chichester Population Dashboard")
-
-if not df.empty:
-    # Sidebar filters
-    years = df["Year"].unique()
-    age_groups = df["Age Group"].unique()
-
-    selected_year = st.sidebar.selectbox("Select year", sorted(years, reverse=True))
-    selected_group = st.sidebar.selectbox("Select age group", sorted(age_groups))
-
-    filtered = df[(df["Year"] == selected_year) & (df["Age Group"] == selected_group)]
-
-    st.subheader(f"Population in {selected_year} for {selected_group}")
-    st.dataframe(filtered)
-
-    st.bar_chart(filtered.set_index("Gender")["Population"])
-else:
-    st.info("Waiting for data...")
-    return df
+    return pd.read_csv(path)
 
 df = load_data()
 
-st.title("📊 Chichester Population Dashboard")
+st.title("📊 Chichester Population Trends")
 
-if not df.empty:
-    # Sidebar filters
-    years = df["Year"].unique()
-    age_groups = df["Age Group"].unique()
+if df.empty:
+    st.stop()
 
-    selected_year = st.sidebar.selectbox("Select year", sorted(years, reverse=True))
-    selected_group = st.sidebar.selectbox("Select age group", sorted(age_groups))
+# --- Sidebar filter ---
+type_options = ["Total only", "Age groups only", "All combined"]
+selected_type = st.sidebar.radio("Select view:", type_options)
 
-    filtered = df[(df["Year"] == selected_year) & (df["Age Group"] == selected_group)]
-
-    st.subheader(f"Population in {selected_year} for {selected_group}")
-    st.dataframe(filtered)
-
-    st.bar_chart(filtered.set_index("Gender")["Population"])
+# Filter by type
+if selected_type == "Total only":
+    filtered = df[df["Type"] == "Total"]
+elif selected_type == "Age groups only":
+    filtered = df[df["Type"] == "Age Group"]
 else:
-    st.info("Waiting for data...")
+    filtered = df[df["Type"].isin(["Total", "Age Group"])]
 
+# Pivot for line chart
+pivot = filtered.pivot(index="Year", columns="Category", values="Population").sort_index()
+
+# Show chart
+st.subheader("📈 Population Over Time")
+st.line_chart(pivot)
+
+# Optional: expandable data table
+with st.expander("🔍 Show data table"):
+    st.dataframe(pivot.style.format("{:,.0f}"))
