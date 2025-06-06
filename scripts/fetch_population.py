@@ -1,27 +1,38 @@
 import pandas as pd
-import os
 import requests
 from io import StringIO
+import os
 
-def fetch_and_clean_population():
-    url = "https://www.ons.gov.uk/file?uri=/peoplepopulationandcommunity/populationandmigration/populationestimates/datasets/populationestimatesforukenglandandwalesscotlandandnorthernireland/mid2021/ukmidyearestimates2021finalversion.xls"
-    file_path = "data/raw/population_ons.xls"
-    os.makedirs("data/raw", exist_ok=True)
+def fetch_population_chichester():
+    url = "https://www.nomisweb.co.uk/api/v01/dataset/NM_2002_1.csv"
+    params = {
+        "geography": "1946157341",  # Chichester
+        "date": "2009-2023"
+    }
+
+    print("📡 Fetching population data from NOMIS...")
+    response = requests.get(url, params=params)
+    if response.status_code != 200 or not response.text.strip():
+        raise RuntimeError(f"❌ Error fetching data: {response.status_code}\n{response.text[:500]}")
+
+    df = pd.read_csv(StringIO(response.text))
+
+    # Rename and keep only necessary columns
+    df = df.rename(columns={
+        "DATE_NAME": "Year",
+        "GEOGRAPHY_NAME": "Location",
+        "OBS_VALUE": "Population",
+        "GENDER_NAME": "Gender",
+        "C_AGE_NAME": "Age Group"
+    })
+
+    df = df[["Year", "Location", "Gender", "Age Group", "Population"]]
+
+    # Save processed output
     os.makedirs("data/processed", exist_ok=True)
-
-    r = requests.get(url)
-    with open(file_path, "wb") as f:
-        f.write(r.content)
-
-    # ONS data usually starts from row 4 or 5
-    df = pd.read_excel(file_path, sheet_name="MYE2 - Persons", skiprows=4, engine="openpyxl")
-    df = df[df["Name"].str.contains("Chichester", na=False)]
-    df = df.melt(id_vars=["Code", "Name"], var_name="Year", value_name="Population")
-    df = df[["Year", "Population", "Name"]]
-    df.columns = ["Year", "Population", "Location"]
-
     df.to_csv("data/processed/population_chichester.csv", index=False)
-    print("✅ Population data saved.")
+    print("✅ Population data saved to data/processed/population_chichester.csv")
 
 if __name__ == "__main__":
-    fetch_and_clean_population()
+    fetch_population_chichester()
+
