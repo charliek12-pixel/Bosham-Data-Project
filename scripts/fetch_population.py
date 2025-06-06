@@ -10,7 +10,7 @@ CHICHESTER_CODE = "1946157341"
 YEARS_BACK = 15
 OUTPUT_PATH = "data/processed/population_chichester_summary.csv"
 
-# Target age brackets exactly as named in NOMIS
+# Age brackets to include (exact text from NOMIS)
 TARGET_AGE_GROUPS = [
     "Aged 0 to 15",
     "Aged 16 to 24",
@@ -51,28 +51,34 @@ def fetch_and_process_population():
     df["Gender"] = df["Gender"].str.strip().str.lower()
     df["Age Group"] = df["Age Group"].str.strip()
 
-    # ✅ Filter for 'All persons' only
+    # ✅ Keep only 'All persons' rows
     df = df[df["Gender"].isin(["all persons", "total"])]
 
-    # Age group breakdown
+    # Age group rows
     age_df = df[df["Age Group"].isin(TARGET_AGE_GROUPS)][["Year", "Age Group", "Population"]].copy()
     age_df = age_df.rename(columns={"Age Group": "Category"})
     age_df["Type"] = "Age Group"
 
-    # Total population (All Ages)
+    # Total population (All Ages), deduplicated to one per year
     total_df = df[df["Age Group"].str.lower() == "all ages"][["Year", "Population"]].copy()
+    total_df = total_df.drop_duplicates(subset=["Year"])  # ✅ Deduplicate by year
     total_df["Category"] = "Total Population"
     total_df["Type"] = "Total"
     total_df = total_df[["Year", "Category", "Type", "Population"]]
 
-    # Combine
+    # Combine and save
     combined = pd.concat([age_df, total_df], ignore_index=True)
     combined = combined[["Year", "Category", "Type", "Population"]]
     combined = combined.sort_values(by=["Year", "Type", "Category"])
 
-    # Save
     os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
     combined.to_csv(OUTPUT_PATH, index=False)
+
+    print(f"✅ Population summary saved to {OUTPUT_PATH}")
+
+if __name__ == "__main__":
+    fetch_and_process_population()
+
 
     print(f"✅ Population summary saved to {OUTPUT_PATH}")
 
