@@ -37,7 +37,7 @@ def fetch_and_process_population():
 
     df = pd.read_csv(StringIO(response.text))
 
-    # Rename for clarity
+    # Rename columns to friendly names
     df = df.rename(columns={
         "DATE_NAME": "Year",
         "GEOGRAPHY_NAME": "Location",
@@ -47,7 +47,7 @@ def fetch_and_process_population():
         "OBS_VALUE": "Population"
     })
 
-    # Filter for value rows only and drop exact duplicates
+    # Keep only value rows and drop duplicates
     df = df[df["Measure Type"] == "Value"].drop_duplicates()
     df["Population"] = pd.to_numeric(df["Population"], errors="coerce")
 
@@ -61,34 +61,13 @@ def fetch_and_process_population():
 
     # GENDER (Age Group = "All Ages")
     gender_df = df[
-        df["Age Group"].str.lower() == "all ages" &
-        df["Gender"].isin(["Male", "Female"])
+        (df["Age Group"].str.lower() == "all ages") &
+        (df["Gender"].isin(["Male", "Female"]))
     ][["Year", "Gender", "Population"]].copy()
     gender_df = gender_df.rename(columns={"Gender": "Category"})
     gender_df["Type"] = "Gender"
 
-    # TOTAL POPULATION (All persons + All Ages)
-    total_df = df[
-        df["Age Group"].str.lower() == "all ages" &
-        df["Gender"].str.lower().isin(["all persons", "total"])
-    ][["Year", "Population"]].copy()
-    total_df["Category"] = "Total Population"
-    total_df["Type"] = "Total"
-    total_df = total_df[["Year", "Category", "Type", "Population"]]
-
-    # Combine
-    combined = pd.concat([age_df, gender_df, total_df], ignore_index=True)
-    combined = combined[["Year", "Category", "Type", "Population"]]
-    combined = combined.sort_values(by=["Year", "Type", "Category"])
-
-    # Save
-    os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
-    combined.to_csv(OUTPUT_PATH, index=False)
-
-    print(f"✅ Population summary saved to {OUTPUT_PATH}")
-
-if __name__ == "__main__":
-    fetch_and_process_population()
+    # TOTAL POPUL
 
 
 
