@@ -26,6 +26,13 @@ jobs:
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git add data/processed/population_chichester.csv
-          git commit -m "✅ Auto-update Chichester population data" || echo "No changes to commit"
-          git push
+          git add data/processed/population_chichester*.csv
+      
+          if git diff --cached --quiet; then
+            echo "🟡 No data changes to commit."
+          else
+            git commit -m "✅ Auto-update Chichester population data - $(date -u +'%Y-%m-%d %H:%M UTC')"
+            git push
+            echo "✅ Data committed and pushed."
+          fi
+
