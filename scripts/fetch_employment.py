@@ -9,8 +9,6 @@ def fetch_and_clean_employment():
     # NOMIS API URL for employment & unemployment estimates (model-based)
     url = (
         "https://www.nomisweb.co.uk/api/v01/dataset/NM_1_1.data.csv?"
-        "geography=1946157057&date=latest&employment_status=0"
-        "&measures=20100&select=date,geography_name,employment_status_name,variable_name,obs_value"
     )
 
     try:
