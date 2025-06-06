@@ -10,7 +10,7 @@ CHICHESTER_CODE = "1946157341"
 YEARS_BACK = 15
 OUTPUT_PATH = "data/processed/population_chichester_summary.csv"
 
-# Age brackets to include (exact match from NOMIS)
+# Target age groups as listed by NOMIS
 TARGET_AGE_GROUPS = [
     "Aged 0 to 15",
     "Aged 16 to 24",
@@ -37,37 +37,62 @@ def fetch_and_process_population():
 
     df = pd.read_csv(StringIO(response.text))
 
-    # Rename columns to friendly names
+    # Rename columns
     df = df.rename(columns={
         "DATE_NAME": "Year",
-        "GEOGRAPHY_NAME": "Location",
         "GENDER_NAME": "Gender",
         "C_AGE_NAME": "Age Group",
         "MEASURES_NAME": "Measure Type",
         "OBS_VALUE": "Population"
     })
 
-    # Keep only value rows and drop duplicates
+    # Keep only value rows
     df = df[df["Measure Type"] == "Value"].drop_duplicates()
     df["Population"] = pd.to_numeric(df["Population"], errors="coerce")
 
-    # AGE GROUPS (Gender = "All persons" or "Total")
+    # Make gender and age group case-insensitive
+    df["Gender"] = df["Gender"].str.strip().str.lower()
+    df["Age Group"] = df["Age Group"].str.strip()
+
+    # Age group totals (All persons)
     age_df = df[
-        df["Gender"].str.lower().isin(["all persons", "total"]) &
-        df["Age Group"].isin(TARGET_AGE_GROUPS)
+        (df["Gender"] == "all persons") &
+        (df["Age Group"].isin(TARGET_AGE_GROUPS))
     ][["Year", "Age Group", "Population"]].copy()
     age_df = age_df.rename(columns={"Age Group": "Category"})
     age_df["Type"] = "Age Group"
 
-    # GENDER (Age Group = "All Ages")
+    # Gender totals (Male/Female, All Ages)
     gender_df = df[
         (df["Age Group"].str.lower() == "all ages") &
-        (df["Gender"].isin(["Male", "Female"]))
+        (df["Gender"].isin(["male", "female"]))
     ][["Year", "Gender", "Population"]].copy()
     gender_df = gender_df.rename(columns={"Gender": "Category"})
     gender_df["Type"] = "Gender"
+    gender_df["Category"] = gender_df["Category"].str.title()
 
-    # TOTAL POPUL
+    # Total population (All persons + All Ages)
+    total_df = df[
+        (df["Age Group"].str.lower() == "all ages") &
+        (df["Gender"] == "all persons")
+    ][["Year", "Population"]].copy()
+    total_df["Category"] = "Total Population"
+    total_df["Type"] = "Total"
+    total_df = total_df[["Year", "Category", "Type", "Population"]]
+
+    # Combine all
+    combined = pd.concat([age_df, gender_df, total_df], ignore_index=True)
+    combined = combined[["Year", "Category", "Type", "Population"]]
+    combined = combined.sort_values(by=["Year", "Type", "Category"])
+
+    # Save
+    os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
+    combined.to_csv(OUTPUT_PATH, index=False)
+
+    print(f"✅ Population summary saved to {OUTPUT_PATH}")
+
+if __name__ == "__main__":
+    fetch_and_process_population()
 
 
 
