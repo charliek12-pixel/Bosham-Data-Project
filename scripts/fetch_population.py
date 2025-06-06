@@ -2,29 +2,42 @@ import pandas as pd
 import requests
 from io import StringIO
 import os
-
 from datetime import datetime
 
-def fetch_population_chichester():
-    url = "https://www.nomisweb.co.uk/api/v01/dataset/NM_2002_1.csv"
+# Constants
+NOMIS_URL = "https://www.nomisweb.co.uk/api/v01/dataset/NM_2002_1.csv"
+CHICHESTER_CODE = "1946157341"
+YEARS_BACK = 15
+OUTPUT_PATH = "data/processed/population_chichester_summary.csv"
+
+# Age brackets to include
+TARGET_AGE_GROUPS = [
+    "Aged 0 to 15",
+    "Aged 16 to 24",
+    "Aged 25 to 49",
+    "Aged 50 to 64",
+    "Aged 65+"
+]
+
+def fetch_and_process_population():
+    print("📡 Fetching population data from NOMIS...")
 
     current_year = datetime.now().year
-    start_year = current_year - 14
+    start_year = current_year - (YEARS_BACK - 1)
     date_range = f"{start_year}-{current_year}"
 
     params = {
-        "geography": "1946157341",  # Chichester
+        "geography": CHICHESTER_CODE,
         "date": date_range
     }
 
-    print("📡 Fetching population data from NOMIS...")
-    response = requests.get(url, params=params)
+    response = requests.get(NOMIS_URL, params=params)
     if response.status_code != 200 or not response.text.strip():
         raise RuntimeError(f"❌ Error fetching data: {response.status_code}\n{response.text[:500]}")
 
     df = pd.read_csv(StringIO(response.text))
 
-    # Rename and keep only necessary columns
+    # Rename to match what we need
     df = df.rename(columns={
         "DATE_NAME": "Year",
         "GEOGRAPHY_NAME": "Location",
@@ -34,17 +47,47 @@ def fetch_population_chichester():
         "OBS_VALUE": "Population"
     })
 
-    df = df[["Year", "Location", "Age Group", "Measure Type", "Population"]]
+    # Keep only 'Value' rows and parse Population
+    df = df[df["Measure Type"] == "Value"]
+    df["Population"] = pd.to_numeric(df["Population"], errors="coerce")
 
-    # Split into counts and percentages
-    counts_df = df[df["Measure Type"] == "Value"].copy()
-    perc_df = df[df["Measure Type"] == "Percent"].copy()
+    # AGE GROUPS (All persons only)
+    age_df = df[
+        (df["Gender"] == "All persons") &
+        (df["Age Group"].isin(TARGET_AGE_GROUPS))
+    ][["Year", "Age Group", "Population"]].copy()
+    age_df = age_df.rename(columns={"Age Group": "Category"})
+    age_df["Type"] = "Age Group"
 
-    # Save both
-    os.makedirs("data/processed", exist_ok=True)
-    counts_df.to_csv("data/processed/population_chichester_counts.csv", index=False)
-    perc_df.to_csv("data/processed/population_chichester_percentages.csv", index=False)
+    # GENDER (All Ages only)
+    gender_df = df[
+        (df["Age Group"] == "All Ages") &
+        (df["Gender"].isin(["Male", "Female"]))
+    ][["Year", "Gender", "Population"]].copy()
+    gender_df = gender_df.rename(columns={"Gender": "Category"})
+    gender_df["Type"] = "Gender"
+
+    # TOTAL POPULATION (All Ages, All persons)
+    total_df = df[
+        (df["Age Group"] == "All Ages") &
+        (df["Gender"] == "All persons")
+    ][["Year", "Population"]].copy()
+    total_df["Category"] = "Total Population"
+    total_df["Type"] = "Total"
+    total_df = total_df[["Year", "Category", "Type", "Population"]]
+
+    # Combine and tidy
+    combined = pd.concat([age_df, gender_df, total_df], ignore_index=True)
+    combined = combined[["Year", "Category", "Type", "Population"]]
+    combined = combined.sort_values(by=["Year", "Type", "Category"])
+
+    # Save
+    os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
+    combined.to_csv(OUTPUT_PATH, index=False)
+
+    print(f"✅ Population summary saved to {OUTPUT_PATH}")
 
 if __name__ == "__main__":
-    fetch_population_chichester()
+    fetch_and_process_population()
+
 
