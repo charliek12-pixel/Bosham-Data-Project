@@ -2,85 +2,62 @@ import pandas as pd
 import requests
 from io import StringIO
 import os
-from datetime import datetime
 
-# Constants
-NOMIS_URL = "https://www.nomisweb.co.uk/api/v01/dataset/NM_2002_1.csv"
-CHICHESTER_CODE = "1946157341"
-YEARS_BACK = 15
-OUTPUT_PATH = "data/processed/population_chichester_summary.csv"
+# Directly use the full URL you provided
+NOMIS_URL = "https://www.nomisweb.co.uk/api/v01/dataset/NM_17_5.data.csv?geography=1946157341...1946157341&date=latest-15"
+OUTPUT_PATH = "data/processed/employment_chichester_summary.csv"
 
-# Age brackets to include (exact text from NOMIS)
-TARGET_AGE_GROUPS = [
-    "Aged 0 to 15",
-    "Aged 16 to 24",
-    "Aged 25 to 49",
-    "Aged 50 to 64",
-    "Aged 65+"
+# List of variables to keep
+TARGET_VARIABLES = [
+    "Employment rate - aged 16+",
+    "% who are economically inactive - aged 16+",
+    "% aged 16-64 economically inactive who want a job",
+    "% aged 16-64 economically inactive who do not want a job",
+    "% in employment who are employees - aged 16+",
+    "% in employment who are self employed - aged 16+",
+    "% all in employment who work in - A-B:agriculture and fishing (SIC 92/03)",
+    "% all in employment who work in - C,E:energy and water (SIC 92/03)",
+    "% all in employment who work in - D:manufacturing (SIC 92/03)",
+    "% all in employment who work in - F:construction (SIC 92/03)",
+    "% all in employment who work in - G-H:distribution, hotels and restaurants (SIC 92/03)",
+    "% all in employment who work in - I:transport and communications (SIC 92/03)",
+    "% all in employment who work in - J-K:banking, finance and insurance (SIC 92/03)",
+    "% all in employment who work in - L-N:public admin. education and health (SIC 92/03)",
+    "% all in employment who work in - O-Q:other services (SIC 92/03)",
+    "% all in employment who work in - G-Q:total services (SIC 92/03)"
 ]
 
-def fetch_and_process_population():
-    print("📡 Fetching population data from NOMIS...")
-
-    current_year = datetime.now().year
-    start_year = current_year - (YEARS_BACK - 1)
-    date_range = f"{start_year}-{current_year}"
-
-    params = {
-        "geography": CHICHESTER_CODE,
-        "date": date_range
-    }
-
-    response = requests.get(NOMIS_URL, params=params)
-    if response.status_code != 200 or not response.text.strip():
-        raise RuntimeError(f"❌ Error fetching data: {response.status_code}\n{response.text[:500]}")
+def fetch_employment_data():
+    print("📡 Downloading employment data from NOMIS...")
+    response = requests.get(NOMIS_URL)
+    response.raise_for_status()
 
     df = pd.read_csv(StringIO(response.text))
 
-    # Rename columns and clean
+    # ✅ Only keep rows for full calendar years like "Jan 2010–Dec 2010"
+    df = df[df["DATE_NAME"].str.match(r"^Jan \d{4}–Dec \d{4}$")]
+
+    # ✅ Only keep rows for the selected variable names and 'Variable' measure type
+    df = df[(df["MEASURES_NAME"] == "Variable") & (df["VARIABLE_NAME"].isin(TARGET_VARIABLES))]
+
+    # ✅ Simplify and reshape
     df = df.rename(columns={
         "DATE_NAME": "Year",
-        "GENDER_NAME": "Gender",
-        "C_AGE_NAME": "Age Group",
-        "MEASURES_NAME": "Measure Type",
-        "OBS_VALUE": "Population"
-    })
+        "VARIABLE_NAME": "Category",
+        "OBS_VALUE": "Value"
+    })[["Year", "Category", "Value"]]
 
-    df = df[df["Measure Type"] == "Value"].drop_duplicates()
-    df["Population"] = pd.to_numeric(df["Population"], errors="coerce")
-    df["Gender"] = df["Gender"].str.strip().str.lower()
-    df["Age Group"] = df["Age Group"].str.strip()
+    df["Value"] = pd.to_numeric(df["Value"], errors="coerce")
+    df = df.dropna()
 
-    # ✅ Keep only 'All persons' rows
-    df = df[df["Gender"].isin(["all persons", "total"])]
+    # ✅ Pivot wide for dashboarding
+    df_wide = df.pivot(index="Year", columns="Category", values="Value").reset_index()
 
-    # Age group rows
-    age_df = df[df["Age Group"].isin(TARGET_AGE_GROUPS)][["Year", "Age Group", "Population"]].copy()
-    age_df = age_df.rename(columns={"Age Group": "Category"})
-    age_df["Type"] = "Age Group"
-
-    # Total population (All Ages), deduplicated to one per year
-    total_df = df[df["Age Group"].str.lower() == "all ages"][["Year", "Population"]].copy()
-    total_df = total_df.drop_duplicates(subset=["Year"])  # ✅ Deduplicate by year
-    total_df["Category"] = "Total Population"
-    total_df["Type"] = "Total"
-    total_df = total_df[["Year", "Category", "Type", "Population"]]
-
-    # Combine and save
-    combined = pd.concat([age_df, total_df], ignore_index=True)
-    combined = combined[["Year", "Category", "Type", "Population"]]
-    combined = combined.sort_values(by=["Year", "Type", "Category"])
-
+    # ✅ Save output
     os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
-    combined.to_csv(OUTPUT_PATH, index=False)
-
-    print(f"✅ Population summary saved to {OUTPUT_PATH}")
-
-if __name__ == "__main__":
-    fetch_and_process_population()
-
-
-    print(f"✅ Population summary saved to {OUTPUT_PATH}")
+    df_wide.to_csv(OUTPUT_PATH, index=False)
+    print(f"✅ Saved to: {OUTPUT_PATH}")
 
 if __name__ == "__main__":
-    fetch_and_process_population()
+    fetch_employment_data()
+
