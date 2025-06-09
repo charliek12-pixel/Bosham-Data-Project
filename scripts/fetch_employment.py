@@ -2,15 +2,13 @@ import pandas as pd
 import requests
 from io import StringIO
 import os
-from datetime import datetime
 
-# Constants
-NOMIS_URL = "https://www.nomisweb.co.uk/api/v01/dataset/NM_17_5.csv"
+# Constants (same as before)
+NOMIS_URL = "https://www.nomisweb.co.uk/api/v01/dataset/NM_17_5.data.csv"
 CHICHESTER_CODE = "1946157341"
-YEARS_BACK = 15
 OUTPUT_PATH = "data/processed/employment_chichester_summary.csv"
 
-# List of variables to keep (must match exactly)
+# List of variables to keep (same as before)
 TARGET_VARIABLES = [
     "Employment rate - aged 16+",
     "% who are economically inactive - aged 16+",
@@ -31,51 +29,36 @@ TARGET_VARIABLES = [
 ]
 
 def fetch_and_process_employment():
-    print("📡 Fetching employment data from NOMIS...")
-
-    current_year = datetime.now().year
-    start_year = current_year - (YEARS_BACK - 1)
-    date_range = ",".join(str(year) for year in range(start_year, current_year + 1))
-
     params = {
         "geography": CHICHESTER_CODE,
-        "date": date_range
+        "time": "latestMINUS14-latest",
+        "measures": "20100",  # ensures we get values
     }
 
+    print("📡 Fetching employment data (last 15 years)...")
     response = requests.get(NOMIS_URL, params=params)
-    if response.status_code != 200 or not response.text.strip():
-        raise RuntimeError(f"❌ Error fetching data: {response.status_code}\n{response.text[:500]}")
+    if response.status_code != 200:
+        raise RuntimeError(f"❌ API error: {response.status_code}")
 
     df = pd.read_csv(StringIO(response.text))
+    print("✅ Raw download complete. Years present:", df["DATE_NAME"].unique())
 
-    # Filter for Variable type rows only
+    # Filter and simplify
     df = df[df["MEASURES_NAME"] == "Variable"]
-
-    # Filter for specific variables
     df = df[df["VARIABLE_NAME"].isin(TARGET_VARIABLES)]
-
-    # Clean up column names
-    df = df.rename(columns={
-        "DATE_NAME": "Year",
-        "VARIABLE_NAME": "Category",
-        "OBS_VALUE": "Value"
-    })
-
-    # Narrow to relevant columns and drop NA
+    df = df.rename(columns={"DATE_NAME": "Year", "VARIABLE_NAME": "Category", "OBS_VALUE": "Value"})
     df = df[["Year", "Category", "Value"]].dropna()
     df["Value"] = pd.to_numeric(df["Value"], errors="coerce")
 
-    # Pivot to wide format
+    # Pivot wide
     df_wide = df.pivot(index="Year", columns="Category", values="Value").reset_index()
 
-    # Save to output
+    # Save
     os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
     df_wide.to_csv(OUTPUT_PATH, index=False)
-
-    print(f"✅ Pivoted employment summary saved to {OUTPUT_PATH}")
+    print(f"✅ Employment data saved with {len(df_wide)} rows")
 
 if __name__ == "__main__":
     fetch_and_process_employment()
-
 
 
