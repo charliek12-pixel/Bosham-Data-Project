@@ -10,7 +10,7 @@ CHICHESTER_CODE = "1946157341"
 YEARS_BACK = 15
 OUTPUT_PATH = "data/processed/employment_chichester_summary.csv"
 
-# List of variables to keep (must match exactly)
+# List of variables to keep (must match exactly what's in VARIABLE_NAME column)
 TARGET_VARIABLES = [
     "Employment rate - aged 16+",
     "% who are economically inactive - aged 16+",
@@ -48,34 +48,33 @@ def fetch_and_process_employment():
 
     df = pd.read_csv(StringIO(response.text))
 
-    # Filter for Variable type rows only
+    # Filter by MEASURES_NAME == 'Variable'
     df = df[df["MEASURES_NAME"] == "Variable"]
 
-    # Filter for specific variables
+    # Filter by relevant VARIABLE_NAMEs
     df = df[df["VARIABLE_NAME"].isin(TARGET_VARIABLES)]
 
-    # Clean up column names
+    # Rename key columns
     df = df.rename(columns={
         "DATE_NAME": "Year",
+        "GEOGRAPHY_NAME": "Location",
         "VARIABLE_NAME": "Category",
         "OBS_VALUE": "Value"
     })
 
-    # Narrow to relevant columns and drop NA
-    df = df[["Year", "Category", "Value"]].dropna()
-    df["Value"] = pd.to_numeric(df["Value"], errors="coerce")
-
-    # Pivot to wide format
-    df_wide = df.pivot(index="Year", columns="Category", values="Value").reset_index()
+    # Keep only final columns
+    df = df[["Year", "Category", "Value"]]
+    df = df.sort_values(by=["Year", "Category"]).dropna()
 
     # Save to output
     os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
-    df_wide.to_csv(OUTPUT_PATH, index=False)
+    df.to_csv(OUTPUT_PATH, index=False)
 
-    print(f"✅ Pivoted employment summary saved to {OUTPUT_PATH}")
+    print(f"✅ Employment summary saved to {OUTPUT_PATH}")
 
 if __name__ == "__main__":
     fetch_and_process_employment()
+
 
 
 
