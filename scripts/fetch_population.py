@@ -3,11 +3,11 @@ import requests
 from io import StringIO
 import os
 
-# Directly use the full URL you provided
+# Constants
 NOMIS_URL = "https://www.nomisweb.co.uk/api/v01/dataset/NM_17_5.data.csv?geography=1946157341...1946157341&date=latest-15"
 OUTPUT_PATH = "data/processed/employment_chichester_summary.csv"
 
-# List of variables to keep
+# Target variable names
 TARGET_VARIABLES = [
     "Employment rate - aged 16+",
     "% who are economically inactive - aged 16+",
@@ -28,36 +28,38 @@ TARGET_VARIABLES = [
 ]
 
 def fetch_employment_data():
-    print("📡 Downloading employment data from NOMIS...")
+    print("📡 Fetching data from NOMIS...")
     response = requests.get(NOMIS_URL)
     response.raise_for_status()
 
     df = pd.read_csv(StringIO(response.text))
 
-    # ✅ Only keep rows for full calendar years like "Jan 2010–Dec 2010"
-    df = df[df["DATE_NAME"].str.match(r"^Jan \d{4}–Dec \d{4}$")]
+    # ✅ Filter to calendar year format
+    df = df[df["DATE_NAME"].str.match(r"^Jan \d{4}-Dec \d{4}$")]
 
-    # ✅ Only keep rows for the selected variable names and 'Variable' measure type
-    df = df[(df["MEASURES_NAME"] == "Variable") & (df["VARIABLE_NAME"].isin(TARGET_VARIABLES))]
+    # ✅ Filter by measure and variable
+    df = df[(df["MEASURES_NAME"] == "Variable") & df["VARIABLE_NAME"].isin(TARGET_VARIABLES)]
 
-    # ✅ Simplify and reshape
+    # ✅ Rename and select columns
     df = df.rename(columns={
         "DATE_NAME": "Year",
         "VARIABLE_NAME": "Category",
         "OBS_VALUE": "Value"
     })[["Year", "Category", "Value"]]
 
+    # ✅ Clean values
     df["Value"] = pd.to_numeric(df["Value"], errors="coerce")
     df = df.dropna()
 
-    # ✅ Pivot wide for dashboarding
+    # ✅ Pivot to wide format
     df_wide = df.pivot(index="Year", columns="Category", values="Value").reset_index()
 
     # ✅ Save output
     os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
     df_wide.to_csv(OUTPUT_PATH, index=False)
-    print(f"✅ Saved to: {OUTPUT_PATH}")
+    print(f"✅ Data saved to: {OUTPUT_PATH}")
 
 if __name__ == "__main__":
     fetch_employment_data()
+
 
