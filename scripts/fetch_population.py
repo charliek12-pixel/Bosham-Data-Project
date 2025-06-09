@@ -2,12 +2,12 @@ import pandas as pd
 import requests
 from io import StringIO
 import os
+import traceback
 
 # Constants
 NOMIS_URL = "https://www.nomisweb.co.uk/api/v01/dataset/NM_17_5.data.csv?geography=1946157341...1946157341&date=latest-15"
 OUTPUT_PATH = "data/processed/employment_chichester_summary.csv"
 
-# Target variable names
 TARGET_VARIABLES = [
     "Employment rate - aged 16+",
     "% who are economically inactive - aged 16+",
@@ -28,38 +28,45 @@ TARGET_VARIABLES = [
 ]
 
 def fetch_employment_data():
-    print("📡 Fetching data from NOMIS...")
-    response = requests.get(NOMIS_URL)
-    response.raise_for_status()
+    try:
+        print("📡 Fetching employment data...")
+        response = requests.get(NOMIS_URL)
+        response.raise_for_status()
+        print("✅ Data downloaded successfully.")
 
-    df = pd.read_csv(StringIO(response.text))
+        df = pd.read_csv(StringIO(response.text))
+        print(f"📊 Raw data shape: {df.shape}")
+        
+        # Filter only full calendar years
+        df = df[df["DATE_NAME"].str.match(r"^Jan \d{4}-Dec \d{4}$")]
+        print(f"📆 After filtering by calendar years: {df.shape}")
 
-    # ✅ Filter to calendar year format
-    df = df[df["DATE_NAME"].str.match(r"^Jan \d{4}-Dec \d{4}$")]
+        df = df[(df["MEASURES_NAME"] == "Variable") & df["VARIABLE_NAME"].isin(TARGET_VARIABLES)]
+        print(f"🎯 After filtering by variable names: {df.shape}")
 
-    # ✅ Filter by measure and variable
-    df = df[(df["MEASURES_NAME"] == "Variable") & df["VARIABLE_NAME"].isin(TARGET_VARIABLES)]
+        df = df.rename(columns={
+            "DATE_NAME": "Year",
+            "VARIABLE_NAME": "Category",
+            "OBS_VALUE": "Value"
+        })[["Year", "Category", "Value"]]
 
-    # ✅ Rename and select columns
-    df = df.rename(columns={
-        "DATE_NAME": "Year",
-        "VARIABLE_NAME": "Category",
-        "OBS_VALUE": "Value"
-    })[["Year", "Category", "Value"]]
+        df["Value"] = pd.to_numeric(df["Value"], errors="coerce")
+        df = df.dropna()
+        print(f"🧹 After cleaning nulls: {df.shape}")
 
-    # ✅ Clean values
-    df["Value"] = pd.to_numeric(df["Value"], errors="coerce")
-    df = df.dropna()
+        df_wide = df.pivot(index="Year", columns="Category", values="Value").reset_index()
+        print(f"📐 Final wide format shape: {df_wide.shape}")
 
-    # ✅ Pivot to wide format
-    df_wide = df.pivot(index="Year", columns="Category", values="Value").reset_index()
-
-    # ✅ Save output
-    os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
-    df_wide.to_csv(OUTPUT_PATH, index=False)
-    print(f"✅ Data saved to: {OUTPUT_PATH}")
+        os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
+        df_wide.to_csv(OUTPUT_PATH, index=False)
+        print(f"💾 File saved to {OUTPUT_PATH}")
+    except Exception as e:
+        print("❌ An error occurred during execution:")
+        traceback.print_exc()
+        exit(1)
 
 if __name__ == "__main__":
     fetch_employment_data()
+
 
 
