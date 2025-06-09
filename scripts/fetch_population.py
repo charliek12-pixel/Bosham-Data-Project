@@ -5,7 +5,7 @@ import os
 from datetime import datetime
 
 # Constants
-NOMIS_URL = "https://www.nomisweb.co.uk/api/v01/dataset/NM_17_5.data.csv?geography=1946157341...1946157341&date=latest-15"
+NOMIS_URL = "https://www.nomisweb.co.uk/api/v01/dataset/NM_17_5.csv"
 CHICHESTER_CODE = "1946157341"
 YEARS_BACK = 15
 OUTPUT_PATH = "data/processed/employment_chichester_summary.csv"
@@ -76,6 +76,7 @@ def fetch_and_process_employment():
 
 if __name__ == "__main__":
     fetch_and_process_employment()
+
 
 
 
