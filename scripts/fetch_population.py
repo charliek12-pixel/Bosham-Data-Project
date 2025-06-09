@@ -38,7 +38,7 @@ def fetch_employment_data():
         print(f"📊 Raw data shape: {df.shape}")
         
         # Filter only full calendar years
-        df = df[df["DATE_NAME"].str.match(r"^Jan \d{4}-Dec \d{4}$")]
+        df = df[df["DATE_NAME"].str.contains("Jan") & df["DATE_NAME"].str.contains("Dec")]
         print(f"📆 After filtering by calendar years: {df.shape}")
 
         df = df[(df["MEASURES_NAME"] == "Variable") & df["VARIABLE_NAME"].isin(TARGET_VARIABLES)]
