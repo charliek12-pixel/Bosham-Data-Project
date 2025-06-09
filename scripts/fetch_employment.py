@@ -35,7 +35,7 @@ def fetch_and_process_employment():
 
     current_year = datetime.now().year
     start_year = current_year - (YEARS_BACK - 1)
-    date_range = f"{start_year}-{current_year}"
+    date_range = ",".join(str(year) for year in range(start_year, current_year + 1))
 
     params = {
         "geography": CHICHESTER_CODE,
